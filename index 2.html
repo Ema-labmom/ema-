@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Mis Clientes</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f4f7fb;color:#172033}
+.app{max-width:430px;margin:auto;min-height:100vh;background:#fff}
+header{padding:22px 20px 12px;background:#fff;position:sticky;top:0;z-index:3;border-bottom:1px solid #eee}
+h1{font-size:26px;margin:0 0 5px}.sub{color:#6d7585;font-size:14px}
+main{padding:18px 16px 90px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:16px}
+.stat{background:#f5f8fd;border-radius:14px;padding:13px 8px;text-align:center}.stat b{font-size:22px;display:block}.stat span{font-size:11px;color:#727b8b}
+.card{border:1px solid #e7ebf2;border-radius:16px;padding:15px;margin-bottom:11px;background:#fff;box-shadow:0 3px 12px #1720330b}
+.client{display:flex;align-items:center;gap:12px}.icon{width:43px;height:43px;border-radius:12px;background:#eaf2ff;display:grid;place-items:center;font-size:22px}.grow{flex:1}.name{font-weight:700}.meta{font-size:12px;color:#778093;margin-top:4px}
+.badge{font-size:11px;padding:5px 8px;border-radius:20px;font-weight:700}.pending{background:#fff0f0;color:#d64b4b}.done{background:#eaf9ef;color:#2e9b59}
+button{border:0;border-radius:12px;padding:12px 15px;font-weight:700;font-size:14px;cursor:pointer}
+.primary{background:#2775e8;color:white;width:100%}.green{background:#28a85b;color:#fff;width:100%}.light{background:#eef3fa;color:#24405f}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+input,textarea,select{width:100%;border:1px solid #dce2eb;border-radius:11px;padding:12px;font-size:14px;margin-top:7px;background:white}
+label{display:block;font-size:13px;font-weight:700;margin-top:14px}
+.product{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #edf0f5}.product:last-child{border-bottom:0}
+.product input{width:20px;margin:0}.qty{width:70px;margin:0;margin-left:auto;padding:8px}
+nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(430px,100%);height:68px;background:#fff;border-top:1px solid #e8ebf0;display:flex;justify-content:space-around;align-items:center;z-index:5}
+nav button{background:none;color:#7c8492;padding:8px;font-size:11px}.active{color:#2775e8!important}.hidden{display:none}.back{background:none;padding:0;color:#2775e8;margin-bottom:15px}.titleRow{display:flex;align-items:center;gap:10px;margin-bottom:16px}.titleRow h2{margin:0;font-size:21px}
+.empty{text-align:center;color:#777;padding:30px}.success{text-align:center;padding:35px 10px}.check{font-size:62px}
+</style>
+
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2775e8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Mis Clientes">
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+</script>
+</head>
+<body>
+<div class="app">
+<header><h1>Mis Clientes</h1><div class="sub">Visitas · Productos · Resultados</div></header>
+
+<main id="home">
+  <div class="stats">
+    <div class="stat"><b id="total">47</b><span>Clientes</span></div>
+    <div class="stat"><b id="visited" style="color:#2e9b59">0</b><span>Visitados</span></div>
+    <div class="stat"><b id="pending" style="color:#d64b4b">47</b><span>Pendientes</span></div>
+  </div>
+  <button class="primary" onclick="show('clients')">☷ &nbsp; Ver mis clientes</button>
+  <div class="actions">
+    <button class="light" onclick="show('addClient')">＋ Nuevo cliente</button>
+    <button class="light" onclick="show('history')">◷ Historial</button>
+  </div>
+  <div style="height:16px"></div>
+  <div class="card"><b>📅 Próxima visita</b><div style="margin-top:9px;font-weight:700">Selecciona un cliente</div><div class="meta">Las horas se pueden agregar después.</div></div>
+</main>
+
+<main id="clients" class="hidden">
+  <div class="titleRow"><h2>Clientes</h2></div>
+  <input id="search" placeholder="🔎 Buscar cliente..." oninput="renderClients()">
+  <div class="actions"><button class="light" onclick="filter='all';renderClients()">Todos</button><button class="light" onclick="filter='pending';renderClients()">Pendientes</button></div>
+  <div id="clientList" style="margin-top:14px"></div>
+</main>
+
+<main id="detail" class="hidden"></main>
+
+
+<main id="addClient" class="hidden">
+  <button class="back" onclick="show('clients')">← Volver</button>
+  <div class="titleRow"><h2>Nuevo cliente</h2></div>
+  <label>Nombre del cliente<input id="newName" placeholder="Ej. Tienda García"></label>
+  <label>Teléfono<input id="newPhone" placeholder="+502 ..."></label>
+  <label>Dirección<input id="newAddress" placeholder="Zona, calle o dirección"></label>
+  <label>Hora de visita<input id="newTime" placeholder="10:30 a. m."></label>
+  <div style="height:15px"></div>
+  <button class="green" onclick="addClient()">Guardar cliente</button>
+</main>
+
+<main id="history" class="hidden">
+  <button class="back" onclick="show('home')">← Volver</button>
+  <div class="titleRow"><h2>Historial de visitas</h2></div>
+  <div id="historyList"></div>
+</main>
+
+<main id="products" class="hidden">
+  <div class="titleRow"><h2>Productos</h2></div>
+  <div class="card">
+    <b>➕ Agregar producto</b>
+    <input id="newProductName" placeholder="Ej. Paracetamol 500 mg" onkeydown="if(event.key==='Enter')addProduct()">
+    <button class="primary" style="margin-top:8px" onclick="addProduct()">Agregar producto</button>
+  </div>
+  <input id="productSearch" placeholder="🔎 Buscar producto..." oninput="renderProducts(this.value)">
+  <div id="productList"></div>
+</main>
+
+<nav>
+<button class="active" onclick="show('home')">⌂<br>Inicio</button>
+<button onclick="show('clients')">♙<br>Clientes</button>
+<button onclick="show('products')">▣<br>Productos</button>
+<button onclick="alert('Aquí podremos agregar historial, reportes y configuración.')">☰<br>Más</button>
+</nav>
+</div>
+
+<script>
+let defaultClients=[{"id": 1, "name": "DROG. LA SALUD", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 2, "name": "SOLUCIONES MÉDICAS — JR", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 3, "name": "HERMAN COTOM", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 4, "name": "GUSTAVO VELASQUEZ", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 5, "name": "HOSPITAL DE ESPECIALIDADES — Quetzaltenango", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 6, "name": "PROVEEDORA DE SALUD TOTAL", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 7, "name": "HOSPITAL METROPOLITANO", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 8, "name": "CENTRO MED. EMANUEL", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 9, "name": "GRUPO MUNICH", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 10, "name": "FARMACIA SAN PEDRO", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 11, "name": "LAB. DRGS. Y F. ROGIL", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 12, "name": "DAMARIS RIVAS", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 13, "name": "DR. SERGIO MORALES", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 14, "name": "ISMEDIC", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 15, "name": "CORPORACIÓN DE BIENES Y SERVICIOS", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 16, "name": "SERV. MED. Y HOSPITALARIOS / SERMESA", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 17, "name": "FARMACIAS APROAMSA", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 18, "name": "CORPORACIÓN ALVAFE", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 19, "name": "FARMACIAS EUROPEAS", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 20, "name": "MI FARMACIA", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 21, "name": "EDGAR LEONEL ACEITUNO", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 22, "name": "UNIVERSO MÉDICO", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 23, "name": "HOSPITAL PRIVADO DE QUETZALTENANGO", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 24, "name": "CORP. Hospitalaria La Bendición", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 25, "name": "FARMACÉUTICA EUCALIPTOS, S.A.", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 26, "name": "PROMECO", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 27, "name": "HOSP. DE ESPECIALIDADES LA TRINIDAD", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 28, "name": "MARIA JOSÉ CAMAS", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 29, "name": "DISPROMED", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 30, "name": "GRUPO DE NEGOCIOS TELSA", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 31, "name": "INVERSIONES ARIES", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 32, "name": "PHARMA SERVICIOS EXPRESS", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 33, "name": "DIST. EL ANGEL", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 34, "name": "QUALITY SERVICES MD", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 35, "name": "LAVSA", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 36, "name": "M & M MEDICAL", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 37, "name": "DETIMED", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 38, "name": "DAER / DAVID ADONIAS LOPEZ SAUCEDO", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 39, "name": "SOLUCIONES MÉDICAS HOSPITALARIAS / ADDER", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 40, "name": "FARMADE", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 41, "name": "FARMACIA DE PAZ / ADELA JESÚS GONZALEZ", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 42, "name": "JUAN ESTEBAN COYOY / DROG. SHALOM", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 43, "name": "FARMACIA PAIZ, RODRIGUEZ, VALDEZ", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 44, "name": "C & G PHARMA", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 45, "name": "HACAMA", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 46, "name": "ANA LUCIA CARRILLO / ANSAM", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}, {"id": 47, "name": "FARMACIAS APRODEM", "time": "Pendiente de asignar", "phone": "Sin teléfono", "address": "Sin dirección"}];
+// Los clientes nuevos también quedan guardados en este dispositivo.
+let clients = JSON.parse(localStorage.getItem('clients') || 'null') || defaultClients;
+function saveClients(){ localStorage.setItem('clients', JSON.stringify(clients)); }
+let products=JSON.parse(localStorage.getItem('products')||'null')||["Producto A","Producto B","Producto C","Producto D","Producto E"];
+function saveProducts(){localStorage.setItem('products',JSON.stringify(products));}
+let visits=JSON.parse(localStorage.getItem('visits')||'{}'), filter='all', current=null;
+
+function show(id){
+ document.querySelectorAll('main').forEach(x=>x.classList.add('hidden'));
+ document.getElementById(id).classList.remove('hidden');
+ if(id==='clients')renderClients(); if(id==='products')renderProducts(''); if(id==='history')renderHistory();
+ updateStats();
+ window.scrollTo(0,0);
+}
+function renderClients(){
+ let q=(document.getElementById('search')?.value||'').toLowerCase();
+ let arr=clients.filter(c=>c.name.toLowerCase().includes(q));
+ if(filter==='pending')arr=arr.filter(c=>!visits[c.id]);
+ document.getElementById('clientList').innerHTML=arr.map(c=>`
+ <div class="card" onclick="openClient(${c.id})"><div class="client"><div class="icon">🏪</div><div class="grow"><div class="name">${c.name}</div><div class="meta">Hoy · ${c.time}</div></div><span class="badge ${visits[c.id]?'done':'pending'}">${visits[c.id]?'Visitado':'Pendiente'}</span>›</div></div>`).join('')||'<div class="empty">No hay clientes que coincidan.</div>';
+}
+function openClient(id){
+ current=clients.find(c=>c.id===id);
+ let saved=visits[id]||{items:[],note:''};
+ document.querySelectorAll('main').forEach(x=>x.classList.add('hidden'));
+ let d=document.getElementById('detail');d.classList.remove('hidden');
+ d.innerHTML=`<button class="back" onclick="show('clients')">← Volver</button>
+ <div class="titleRow"><div class="icon">🏪</div><h2>${current.name}</h2></div>
+ <div class="card"><div>📞 ${current.phone}</div><div style="margin-top:12px">📍 ${current.address}</div><div style="margin-top:12px">📅 Hoy · ${current.time}</div>
+ <div class="actions"><button class="light" onclick="openMaps()">📍 Maps</button><button class="light" onclick="openWaze()">🚗 Waze</button></div></div>
+ <div class="card"><b>📦 Productos que necesita</b>${products.map((p,i)=>{let checked=saved.items.includes(p);return `<div class="product"><input type="checkbox" id="p${i}" ${checked?'checked':''} onchange="toggleProductIndex(${i},this.checked)"><label for="p${i}" style="margin:0;font-weight:500;flex:1">${p}</label><input class="qty" type="number" min="0" placeholder="cant." value="${saved[p]||''}" onchange="setQtyIndex(${i},this.value)"></div>`}).join('')}</div>
+ <label>Notas de la visita<textarea id="note" placeholder="Ej. Todo bien, quiere más variedad...">${saved.note||''}</textarea></label>
+ <div style="height:12px"></div><button class="green" onclick="saveVisit()">✓ Guardar visita</button>`;
+}
+function toggleProduct(p,on){let v=visits[current.id]||{items:[],note:''};v.items=v.items||[];if(on&&!v.items.includes(p))v.items.push(p);if(!on)v.items=v.items.filter(x=>x!==p);visits[current.id]=v}
+function setQty(p,v){let x=visits[current.id]||{items:[],note:''};x[p]=v;visits[current.id]=x}
+function toggleProductIndex(i,on){toggleProduct(products[i],on)}
+function setQtyIndex(i,v){setQty(products[i],v)}
+function saveVisit(){
+ let v=visits[current.id]||{items:[],note:''};v.note=document.getElementById('note').value;v.visitedAt=new Date().toISOString();visits[current.id]=v;localStorage.setItem('visits',JSON.stringify(visits));
+ let d=document.getElementById('detail');d.innerHTML=`<div class="success"><div class="check">✅</div><h2>¡Cliente visitado!</h2><p style="color:#6d7585">${current.name}</p><div class="card" style="text-align:left"><b>Productos solicitados</b><p>${v.items.length?v.items.map(x=>'• '+x+(v[x]?` (${v[x]})`:'')).join('<br>'):'• Ninguno'}</p></div><button class="primary" onclick="show('clients')">Volver a la lista</button></div>`;updateStats();
+}
+
+function addClient(){
+ const name=document.getElementById('newName').value.trim();
+ if(!name){alert('Escribe el nombre del cliente.');return}
+ const c={id:Date.now(),name,time:document.getElementById('newTime').value.trim()||'Sin hora',
+   phone:document.getElementById('newPhone').value.trim()||'Sin teléfono',
+   address:document.getElementById('newAddress').value.trim()||'Sin dirección'};
+ clients.push(c); saveClients();
+ document.getElementById('newName').value='';document.getElementById('newPhone').value='';
+ document.getElementById('newAddress').value='';document.getElementById('newTime').value='';
+ alert('Cliente guardado.'); show('clients');
+}
+function openMaps(){
+ const q=encodeURIComponent(current.address);
+ window.open('https://www.google.com/maps/search/?api=1&query='+q,'_blank');
+}
+function openWaze(){
+ const q=encodeURIComponent(current.address);
+ window.open('https://www.waze.com/ul?q='+q+'&navigate=yes','_blank');
+}
+function renderHistory(){
+ const el=document.getElementById('historyList');
+ const rows=Object.entries(visits).sort((a,b)=>(b[1].visitedAt||'').localeCompare(a[1].visitedAt||''));
+ el.innerHTML=rows.length?rows.map(([id,v])=>{
+   const c=clients.find(x=>x.id==id); if(!c)return '';
+   const date=v.visitedAt?new Date(v.visitedAt).toLocaleString('es-GT',{dateStyle:'medium',timeStyle:'short'}):'Fecha desconocida';
+   return `<div class="card"><div class="client"><div class="icon">✅</div><div class="grow"><div class="name">${c.name}</div><div class="meta">${date}</div></div></div>
+   <div style="margin-top:10px;font-size:13px">${v.items?.length?'📦 '+v.items.join(', '):'Sin productos registrados'}</div>
+   ${v.note?`<div class="meta" style="margin-top:8px">📝 ${v.note}</div>`:''}</div>`;
+ }).join(''):'<div class="empty">Todavía no hay visitas registradas.</div>';
+}
+
+function updateStats(){let n=Object.keys(visits).length;document.getElementById('total').textContent=clients.length;document.getElementById('visited').textContent=n;document.getElementById('pending').textContent=clients.length-n}
+function addProduct(){
+ const input=document.getElementById('newProductName');
+ const name=input.value.trim();
+ if(!name){alert('Escribe el nombre del producto.');return}
+ if(products.some(p=>p.toLowerCase()===name.toLowerCase())){alert('Ese producto ya existe.');return}
+ products.push(name);saveProducts();input.value='';renderProducts('');
+}
+function renameProduct(i){
+ const oldName=products[i];
+ const name=prompt('Nuevo nombre del producto:',oldName);
+ if(name===null)return;
+ const newName=name.trim();
+ if(!newName||newName===oldName)return;
+ if(products.some((p,j)=>j!==i&&p.toLowerCase()===newName.toLowerCase())){alert('Ese producto ya existe.');return}
+ products[i]=newName;
+ Object.values(visits).forEach(v=>{if(v.items)v.items=v.items.map(x=>x===oldName?newName:x);if(Object.prototype.hasOwnProperty.call(v,oldName)){v[newName]=v[oldName];delete v[oldName]}});
+ localStorage.setItem('visits',JSON.stringify(visits));saveProducts();renderProducts(document.getElementById('productSearch')?.value||'');
+}
+function deleteProduct(i){
+ const name=products[i];
+ if(!confirm('¿Eliminar "'+name+'" del catálogo?'))return;
+ products.splice(i,1);
+ Object.values(visits).forEach(v=>{if(v.items)v.items=v.items.filter(x=>x!==name);delete v[name]});
+ localStorage.setItem('visits',JSON.stringify(visits));saveProducts();renderProducts(document.getElementById('productSearch')?.value||'');
+}
+function renderProducts(q){
+ let el=document.getElementById('productList');
+ q=(q||'').toLowerCase();
+ const arr=products.map((p,i)=>({p,i})).filter(x=>x.p.toLowerCase().includes(q));
+ el.innerHTML=arr.length?arr.map(({p,i})=>`<div class="card"><div class="client"><div class="icon">📦</div><div class="grow"><b>${p}</b><div class="meta">Disponible para registrar pedidos</div></div></div><div class="actions"><button class="light" onclick="renameProduct(${i})">✏️ Editar</button><button class="light" onclick="deleteProduct(${i})">🗑️ Eliminar</button></div></div>`).join(''):'<div class="empty">No hay productos.</div>';
+}
+updateStats();renderClients();
+</script>
+</body>
+</html>
